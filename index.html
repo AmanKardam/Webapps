@@ -1,293 +1,136 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>WhatsApp Chat Viewer</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>P2P Chat - Monkeytype Style</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #1e293b;
-  --mine: #056162;
-  --other: #2a3942;
-  --text: #e2e8f0;
-  --meta: #94a3b8;
-  --accent: #38bdf8;
-  --radius: 12px;
-  --shadow: 0 2px 6px rgba(0,0,0,0.05);
-  --scroll-bg: #334155;
-  --scroll-thumb: #64748b;
-}
-body.light {
-  --bg: #f8f9fa;
-  --mine: #dcf8c6;
-  --other: #ffffff;
-  --text: #111;
-  --meta: #6b7280;
-  --accent: #2b6cb0;
-  --scroll-bg: #e2e8f0;
-  --scroll-thumb: #94a3b8;
-}
-body {
-  font-family: 'Inter', 'Segoe UI', sans-serif;
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  transition: background 0.3s, color 0.3s;
-}
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--scroll-bg);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--scroll-thumb);
-  border-radius: 4px;
-}
-.app {
-  max-width: 1200px;
-  margin: auto;
-  padding: 16px;
-}
-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-header h1 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-}
-.controls {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-input, button, select {
-  font-size: 14px;
-  padding: 6px 10px;
-  border: 1px solid #475569;
-  border-radius: var(--radius);
-  background: #334155;
-  color: var(--text);
-}
-body.light input, body.light select {
-  background: white;
-  border-color: #cbd5e1;
-  color: inherit;
-}
-button {
-  background: var(--accent);
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-button:hover {
-  opacity: 0.9;
-}
-/* Dark Mode Toggle Button */
-.toggle-btn {
-  background: transparent;
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  padding: 6px 14px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-weight: 500;
-}
-.toggle-btn:hover {
-  background: var(--accent);
-  color: white;
-}
-.chat {
-  margin-top: 16px;
-  background: transparent;
-  border-radius: var(--radius);
-  height: 70vh;
-  overflow-y: auto;
-  padding: 12px;
-}
-.msg {
-  display: flex;
-  margin: 6px 0;
-  max-width: 75%;
-}
-.left { justify-content: flex-start; }
-.right { margin-left: auto; justify-content: flex-end; }
-.bubble {
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  white-space: pre-wrap;
-  transition: background 0.3s;
-}
-.bubble.mine { background: var(--mine); }
-.bubble.other { background: var(--other); }
-.meta {
-  font-size: 11px;
-  color: var(--meta);
-  margin-bottom: 4px;
-}
-.attachment {
-  font-style: italic;
-  font-size: 13px;
-  color: var(--meta);
-  margin-top: 4px;
-}
-.footer {
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--meta);
-}
-@media(max-width:600px) {
-  .msg { max-width: 90%; }
-}
+  body { font-family: 'Inter', sans-serif; background-color: #1a1a1a; color: #e2e2e2; }
+  .highlight { color: #e2b714; }
+  .btn {
+    background-color: transparent;
+    border: 1px solid #e2b714;
+    color: #e2b714;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .btn:hover {
+    background-color: #e2b714;
+    color: #1a1a1a;
+    box-shadow: 0 0 10px #e2b71455;
+  }
 </style>
 </head>
-<body>
-<div class="app">
-  <header>
-    <h1>WhatsApp Chat Viewer</h1>
-    <input id="fileInput" type="file" accept=".txt"/>
-    <button id="darkToggle" class="toggle-btn">🌙 Dark Mode</button>
+<body class="flex items-center justify-center h-screen">
+<div class="w-full max-w-3xl flex flex-col h-full md:h-[90vh]">
+
+  <!-- Header -->
+  <header class="p-4 flex justify-between items-center border-b border-gray-700">
+    <h1 class="text-xl font-bold highlight">P2P Chat</h1>
+    <div class="flex items-center gap-2">
+      <span id="my-id" class="font-mono text-sm bg-gray-800 px-2 py-1 rounded">...</span>
+      <button id="copy-id" class="btn text-sm">Copy</button>
+    </div>
   </header>
 
-  <div class="controls">
-    <select id="senderDropdown">
-      <option value="">All Participants</option>
-    </select>
-    <input id="searchBox" placeholder="Search messages" style="flex:1"/>
-    <button id="exportCsv">Export CSV</button>
-    <button id="exportHtml">Export HTML</button>
+  <!-- Chat -->
+  <main class="flex-grow flex flex-col p-4 space-y-4 overflow-y-auto" id="chat-messages">
+    <div class="text-center italic text-gray-500">Connect with a peer to start chatting.</div>
+  </main>
+
+  <!-- Input -->
+  <div class="p-4 flex gap-2 border-t border-gray-700">
+    <input id="message-input" type="text" placeholder="Type a message..."
+      class="flex-grow bg-gray-800 text-gray-200 p-2 rounded focus:outline-none focus:ring-1 focus:ring-[#e2b714] font-mono"/>
+    <button id="send-button" class="btn">Send</button>
   </div>
 
-  <div id="chat" class="chat" aria-live="polite"></div>
+  <!-- Connection -->
+  <aside class="p-4 border-t border-gray-700 flex gap-2">
+    <input id="peer-id-input" type="text" placeholder="Peer's ID"
+      class="flex-grow bg-gray-800 text-gray-200 p-2 rounded focus:outline-none focus:ring-1 focus:ring-[#e2b714] font-mono"/>
+    <button id="connect-button" class="btn">Connect</button>
+  </aside>
 
-  <div class="footer">
-    Tip: Works offline. Supports multi-line messages & attachments.
-  </div>
 </div>
 
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-const pattern = /^(\d{2}\/\d{2}\/\d{4}),\s*(\d{1,2}:\d{2}\s*[ap]m)\s*-\s*([^:]+):\s*(.*)$/i;
-const meNames = new Set(["Kardam Aman","Aman Kardam","You"]);
+document.addEventListener('DOMContentLoaded', () => {
+  const myIdEl = document.getElementById('my-id');
+  const copyBtn = document.getElementById('copy-id');
+  const peerIdInput = document.getElementById('peer-id-input');
+  const connectButton = document.getElementById('connect-button');
+  const chatMessages = document.getElementById('chat-messages');
+  const messageInput = document.getElementById('message-input');
+  const sendButton = document.getElementById('send-button');
 
-function parseChat(text) {
-  const lines = text.replace(/\u202f/g,' ').split(/\r?\n/);
-  const messages = [];
-  let current = null;
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (!line) continue;
-    const m = line.match(pattern);
-    if (m) {
-      if (current) messages.push(current);
-      current = { date: m[1], time: m[2], sender: m[3].trim(), message: m[4] };
-    } else if (current) {
-      current.message += '\n' + line;
+  let peer, conn;
+
+  function initializePeer() {
+    peer = new Peer();
+    peer.on('open', id => myIdEl.textContent = id);
+    peer.on('connection', newConn => setupConnection(newConn));
+    sendButton.disabled = true;
+  }
+
+  function setupConnection(newConn) {
+    conn = newConn;
+    sendButton.disabled = false;
+    chatMessages.innerHTML = '';
+    conn.on('data', data => addMessage(data, 'peer'));
+    conn.on('close', () => {
+      sendButton.disabled = true;
+      addSystemMessage('Connection closed.');
+    });
+  }
+
+  function addMessage(msg, sender) {
+    const el = document.createElement('div');
+    el.className = `max-w-[70%] px-3 py-2 rounded font-mono text-sm ${sender === 'me'
+      ? 'ml-auto bg-[#e2b714] text-black'
+      : 'mr-auto bg-gray-700 text-gray-200'}`;
+    el.textContent = msg;
+    chatMessages.appendChild(el);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function addSystemMessage(text) {
+    const el = document.createElement('div');
+    el.className = 'text-center text-gray-500 italic text-sm';
+    el.textContent = text;
+    chatMessages.appendChild(el);
+  }
+
+  function sendMessage() {
+    const msg = messageInput.value.trim();
+    if (msg && conn && conn.open) {
+      conn.send(msg);
+      addMessage(msg, 'me');
+      messageInput.value = '';
     }
   }
-  if (current) messages.push(current);
-  return messages;
-}
 
-function escapeHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+  sendButton.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keypress', e => e.key === 'Enter' && sendMessage());
 
-function highlightLinks(s) {
-  return s.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank">$1</a>');
-}
-
-function renderMessages(messages) {
-  const chat = document.getElementById('chat');
-  chat.innerHTML = '';
-  for (const m of messages) {
-    const isMe = meNames.has(m.sender);
-    const wrapper = document.createElement('div');
-    wrapper.className = 'msg ' + (isMe ? 'right' : 'left');
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble ' + (isMe ? 'mine' : 'other');
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.textContent = `${m.sender} • ${m.date} ${m.time}`;
-    const text = document.createElement('div');
-    text.innerHTML = highlightLinks(escapeHtml(m.message));
-    bubble.appendChild(meta);
-    bubble.appendChild(text);
-    if (/\b(file attached|\.vcf|\.webp|<Media omitted>|media omitted)\b/i.test(m.message)) {
-      const att = document.createElement('div');
-      att.className = 'attachment';
-      att.textContent = '📎 Attachment — see original export';
-      bubble.appendChild(att);
-    }
-    wrapper.appendChild(bubble);
-    chat.appendChild(wrapper);
-  }
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function applyFilters() {
-  const q = document.getElementById('searchBox').value.toLowerCase();
-  const sender = document.getElementById('senderDropdown').value.toLowerCase();
-  const filtered = (window._messages || []).filter(m => {
-    if (sender && m.sender.toLowerCase() !== sender) return false;
-    if (q && !(m.message.toLowerCase().includes(q) || m.sender.toLowerCase().includes(q))) return false;
-    return true;
-  });
-  renderMessages(filtered);
-}
-
-document.getElementById('fileInput').addEventListener('change', async (e) => {
-  const f = e.target.files[0];
-  if (!f) return;
-  const text = await f.text();
-  window._messages = parseChat(text);
-
-  // Populate sender dropdown
-  const senders = Array.from(new Set(window._messages.map(m=>m.sender))).sort();
-  const dropdown = document.getElementById('senderDropdown');
-  dropdown.innerHTML = '<option value="">All Participants</option>';
-  senders.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
-    dropdown.appendChild(opt);
+  connectButton.addEventListener('click', () => {
+    const id = peerIdInput.value.trim();
+    if (!id) return;
+    const newConn = peer.connect(id, { reliable: true });
+    setupConnection(newConn);
   });
 
-  renderMessages(window._messages);
-});
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(myIdEl.textContent);
+    copyBtn.textContent = '✅';
+    setTimeout(() => copyBtn.textContent = 'Copy', 1000);
+  });
 
-document.getElementById('searchBox').addEventListener('input', applyFilters);
-document.getElementById('senderDropdown').addEventListener('change', applyFilters);
-
-document.getElementById('exportCsv').addEventListener('click', () => {
-  const arr = window._messages || [];
-  const csv = ['date,time,sender,message', ...arr.map(m=>`"${m.date}","${m.time}","${m.sender.replace(/"/g,'""')}","${m.message.replace(/"/g,'""')}"`)];
-  const blob = new Blob([csv.join('\n')], {type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='chat_export.csv'; a.click(); URL.revokeObjectURL(url);
-});
-
-document.getElementById('exportHtml').addEventListener('click', () => {
-  const html = document.documentElement.outerHTML;
-  const blob = new Blob([html], {type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='chat_export.html'; a.click(); URL.revokeObjectURL(url);
-});
-
-// Dark mode toggle (default dark)
-document.body.classList.remove('light'); // start dark
-document.getElementById('darkToggle').addEventListener('click', () => {
-  document.body.classList.toggle('light');
-  document.getElementById('darkToggle').textContent = document.body.classList.contains('light') ? "☀️ Light Mode" : "🌙 Dark Mode";
+  initializePeer();
 });
 </script>
 </body>
