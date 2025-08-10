@@ -312,4 +312,318 @@ initPeer();
 
 </script>
 </body>
+</html><!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>P2P Chat — WhatsApp style (Monkeytype)</title>
+
+<!-- PeerJS -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<style>
+  :root{
+    --bg:#2c2e31; --panel:#323437; --panel-2:#282a2d;
+    --gold:#e2b714; --muted:#bfc2c4; --bubble-peer:#3c3e42;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,Arial;color:#e6e6e6;-webkit-font-smoothing:antialiased}
+  .wrap{height:100%;display:flex;align-items:center;justify-content:center;padding:20px}
+  .app{width:100%;max-width:460px;height:90vh;background:var(--panel);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
+  .header{background:var(--panel-2);padding:12px 16px;color:var(--gold);font-weight:700;display:flex;justify-content:space-between;align-items:center}
+  .header .id{font-size:12px;background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:8px;font-family:monospace}
+  .main{display:flex;flex-direction:column;flex:1}
+  .conn{display:flex;gap:8px;padding:12px;border-bottom:1px solid rgba(0,0,0,.35);align-items:center}
+  .conn input{flex:1;background:rgba(0,0,0,0.15);border:0;padding:10px;border-radius:8px;color:#fff;outline:none;font-family:monospace}
+  .btn{background:var(--gold);border:0;color:#111;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 10px;border-radius:8px;cursor:pointer}
+  .chat{flex:1;padding:14px;overflow:auto;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth;background-image:radial-gradient(circle at 10px 10px, rgba(255,255,255,0.02) 1px, transparent 1px), radial-gradient(circle at 30px 30px, rgba(255,255,255,0.02) 1px, transparent 1px);background-size:60px 60px}
+  .row{display:flex}
+  .row.end{justify-content:flex-end}
+  .bubble{max-width:74%;padding:10px 12px;border-radius:14px;line-height:1.25;position:relative;animation:fadeIn .18s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .bubble.me{background:var(--gold);color:#111;border-bottom-right-radius:4px}
+  .bubble.peer{background:var(--bubble-peer);color:#e6e6e6;border-bottom-left-radius:4px}
+  .meta{font-size:11px;color:var(--muted);margin-top:6px;text-align:right}
+  .ticks{font-size:11px;color:rgba(0,0,0,0.55);margin-left:8px}
+  .inputbar{display:flex;gap:8px;padding:12px;border-top:1px solid rgba(0,0,0,.35);align-items:center}
+  .inputbar input{flex:1;padding:10px;border-radius:10px;border:0;background:rgba(0,0,0,0.14);color:#fff;outline:none}
+  .status{font-size:12px;color:var(--muted)}
+  .controls{display:flex;gap:8px;align-items:center}
+  .small{font-size:12px;color:var(--muted)}
+  .top-right{display:flex;gap:8px;align-items:center}
+  .center-hint{text-align:center;color:var(--muted);font-size:13px;padding:8px 0}
+  @media (max-width:520px){ .app{height:95vh;width:100%;max-width:420px} }
+  /* Outgoing message bubble (yellow) */
+.message.outgoing {
+  background-color: #e2b714;
+  color: #000; /* Chat text color */
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 70%;
+  position: relative;
+}
+
+/* Timestamp inside yellow bubble */
+.message.outgoing .timestamp {
+  color: #000; /* Match text color */
+  font-size: 0.75rem;
+  margin-left: 4px;
+}
+
+/* Ticks inside yellow bubble */
+.message.outgoing .ticks {
+  color: red; /* Red ticks */
+  font-size: 0.7rem; /* Shorter height */
+  margin-left: 4px;
+  letter-spacing: -1px; /* Bring ticks closer */
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="app" role="application" aria-label="P2P chat">
+      <div class="header">
+        <div>P2P Chat</div>
+        <div class="top-right">
+          <div id="statusBadge" class="status">Disconnected</div>
+          <div id="myId" class="id">...</div>
+          <button id="copyIdBtn" class="btn-ghost" title="Copy my ID">Copy</button>
+        </div>
+      </div>
+
+      <div class="main">
+        <!-- Connection -->
+        <div class="conn" aria-label="Connection panel">
+          <input id="peerIdInput" placeholder="Peer ID (paste here)" aria-label="Peer ID"/>
+          <div class="controls">
+            <button id="connectBtn" class="btn">Connect</button>
+            <button id="disconnectBtn" class="btn-ghost">Disconnect</button>
+          </div>
+        </div>
+
+        <!-- Chat window -->
+        <div id="chat" class="chat" role="log" aria-live="polite"></div>
+
+        <!-- Input -->
+        <div class="inputbar">
+          <input id="msgInput" placeholder="Type a message…" aria-label="Message input"/>
+          <div class="controls">
+            <button id="sendBtn" class="btn">Send</button>
+            <button id="clearBtn" class="btn-ghost" title="Clear chat">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ---------- Utility ------- */
+const el = id => document.getElementById(id);
+const chatEl = el('chat');
+const myIdEl = el('myId');
+const statusBadge = el('statusBadge');
+const peerIdInput = el('peerIdInput');
+const connectBtn = el('connectBtn');
+const disconnectBtn = el('disconnectBtn');
+const copyIdBtn = el('copyIdBtn');
+const msgInput = el('msgInput');
+const sendBtn = el('sendBtn');
+const clearBtn = el('clearBtn');
+
+let peer = null;
+let conn = null;
+let deliveredSet = new Set(); // track delivered message ids
+let typingTimer = null;
+
+// Save / load
+function saveChat(){ localStorage.setItem('p2p_chat', chatEl.innerHTML); }
+function loadChat(){ const h = localStorage.getItem('p2p_chat'); if(h) chatEl.innerHTML = h; else chatEl.innerHTML = '<div class="center-hint">Connect with a peer to start chatting.</div>'; scrollBottom(); }
+function clearChat(){ chatEl.innerHTML=''; localStorage.removeItem('p2p_chat'); addSystem('Chat cleared.') }
+
+function addSystem(txt){
+  const d = document.createElement('div'); d.className='center-hint'; d.textContent = txt; chatEl.appendChild(d); saveChat(); scrollBottom();
+}
+function formatTime(ts){ const d = new Date(ts||Date.now()); return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+function scrollBottom(){ chatEl.scrollTop = chatEl.scrollHeight; }
+
+/* ---------- Render messages ---------- */
+function appendMessage({id, type, text, ts}, fromMe=false, delivered=false){
+  // wrapper row
+  const row = document.createElement('div'); row.className = fromMe ? 'row end' : 'row';
+  const bubble = document.createElement('div'); bubble.className='bubble ' + (fromMe ? 'me' : 'peer');
+
+  // message content
+  const content = document.createElement('div'); content.textContent = text;
+  const meta = document.createElement('div'); meta.className='meta';
+  meta.textContent = formatTime(ts);
+  // ticks for my sent messages
+  if(fromMe){
+    const tickSpan = document.createElement('span'); tickSpan.className='ticks';
+    tickSpan.textContent = delivered ? '✔✔' : '✔';
+    meta.appendChild(tickSpan);
+  }
+
+  bubble.appendChild(content);
+  bubble.appendChild(meta);
+  // store id on element for ack matching
+  if(id) bubble.dataset.mid = id;
+
+  row.appendChild(bubble);
+  chatEl.appendChild(row);
+  saveChat();
+  scrollBottom();
+}
+
+/* ---------- PeerJS setup ---------- */
+function initPeer(){
+  peer = new Peer();
+  peer.on('open', id => { myIdEl.textContent = id; });
+  peer.on('connection', c => { setupConnection(c); });
+  peer.on('error', (e) => { console.error('Peer error', e); alert('Peer error: '+(e?.message||e)); });
+  updateStatus(false);
+  loadChat();
+  sendBtn.disabled = true;
+}
+
+function setupConnection(c){
+  // if existing connection, close
+  if(conn && conn.open) conn.close();
+  conn = c;
+  sendBtn.disabled = false;
+  updateStatus(true, c.peer);
+  addSystem('Connected to ' + c.peer);
+
+  conn.on('data', handleIncoming);
+  conn.on('close', () => { addSystem('Peer disconnected'); updateStatus(false); sendBtn.disabled = true; conn=null; });
+  conn.on('error', (e)=>{ console.error('Conn error', e); addSystem('Connection error'); });
+}
+
+/* ---------- Message protocols ---------- */
+/*
+message object shapes:
+- {type:'message', id, text, ts}
+- {type:'ack', id}
+- {type:'typing'}
+*/
+
+function handleIncoming(data){
+  // structured?
+  if(typeof data === 'object' && data !== null){
+    if(data.type === 'typing'){ showTyping(); return; }
+    if(data.type === 'message'){
+      // show peer message
+      appendMessage({id:data.id, type:'message', text:data.text, ts:data.ts}, false);
+      // send ack back
+      if(conn && conn.open) conn.send({type:'ack', id: data.id});
+      return;
+    }
+    if(data.type === 'ack'){
+      // mark delivered tick for corresponding message DOM element
+      const mid = data.id;
+      deliveredSet.add(mid);
+      // find bubble with dataset.mid and update tick
+      const bubble = chatEl.querySelector('[data-mid="'+mid+'"]');
+      if(bubble){
+        const meta = bubble.querySelector('.meta');
+        if(meta){
+          let ticks = meta.querySelector('.ticks');
+          if(!ticks){ ticks = document.createElement('span'); ticks.className='ticks'; meta.appendChild(ticks); }
+          ticks.textContent = '✔✔';
+        }
+      }
+      return;
+    }
+  }
+  // fallback string
+  appendMessage({text:String(data), ts:Date.now()}, false);
+}
+
+/* ---------- Typing indicator ---------- */
+function sendTyping(){
+  if(conn && conn.open){
+    try { conn.send({type:'typing'}); } catch(e){ }
+  }
+}
+function showTyping(){
+  // show a small ephemeral system line
+  const id = 'tp';
+  // remove previous typing hint
+  const prev = document.getElementById(id);
+  if(prev) prev.remove();
+  const d = document.createElement('div'); d.id = id; d.className = 'center-hint'; d.textContent = 'Peer is typing…';
+  chatEl.appendChild(d); scrollBottom();
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(()=>{ const eltp = document.getElementById(id); if(eltp) eltp.remove(); }, 1200);
+}
+
+/* ---------- UI actions ---------- */
+function connectToPeer(){
+  const pid = peerIdInput.value.trim();
+  if(!pid) return alert('Enter a peer ID to connect');
+  const c = peer.connect(pid, {reliable:true});
+  c.on('open', ()=> setupConnection(c));
+  c.on('error', e => alert('Connection error: '+(e?.message||e)));
+}
+
+function disconnectPeer(){
+  if(conn) conn.close();
+  conn = null;
+  updateStatus(false);
+  addSystem('Disconnected');
+  sendBtn.disabled = true;
+}
+
+function sendMessage(){
+  const txt = msgInput.value.trim();
+  if(!txt) return;
+  if(!conn || !conn.open){
+    addSystem('Message not sent — no active connection.');
+    return;
+  }
+  // create message object
+  const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+  const obj = {type:'message', id, text:txt, ts: Date.now()};
+  try{
+    conn.send(obj);
+    appendMessage(obj, true, false); // initially single tick
+    msgInput.value = '';
+  }catch(e){
+    addSystem('Failed to send message.');
+    console.error(e);
+  }
+}
+
+/* ---------- small helpers ---------- */
+function updateStatus(connected, peerId){
+  if(connected){
+    statusBadge.textContent = 'Connected' + (peerId ? ` • ${peerId}` : '');
+    statusBadge.style.color = '#bfe28a';
+  } else {
+    statusBadge.textContent = 'Disconnected';
+    statusBadge.style.color = '';
+  }
+}
+
+/* ---------- events ---------- */
+connectBtn.addEventListener('click', connectToPeer);
+disconnectBtn.addEventListener('click', disconnectPeer);
+copyIdBtn.addEventListener('click', ()=> {
+  const id = myIdEl.textContent || '';
+  if(!id) return;
+  navigator.clipboard.writeText(id).then(()=> {
+    copyIdBtn.textContent = 'Copied ✓';
+    setTimeout(()=> copyIdBtn.textContent = 'Copy', 1000);
+  });
+});
+sendBtn.addEventListener('click', sendMessage);
+msgInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ sendMessage(); e.preventDefault(); } });
+msgInput.addEventListener('input', ()=> { sendTyping(); });
+clearBtn.addEventListener('click', ()=> clearChat());
+
+/* ---------- bootstrap ---------- */
+initPeer();
+
+</script>
+</body>
 </html>
